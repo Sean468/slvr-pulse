@@ -1,0 +1,19 @@
+{
+  "name": "slvr-pulse",
+  "version": "0.1.0",
+  "description": "SLVR-style on-chain grid-mining game forked to PulseChain, using drand evmnet (BN254) for verifiable randomness",
+  "license": "MIT",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.10",
+    "mcl-wasm": "^1.4.0"
+  },
+  "dependencies": {
+    "@kevincharm/bls-bn254": "^2.0.0",
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}

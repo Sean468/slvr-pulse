@@ -1,0 +1,14 @@
+node_modules/
+artifacts/
+cache/
+coverage/
+coverage.json
+typechain-types/
+.env
+.env.local
+# frontend build output
+web/.next/
+web/out/
+# never commit keys or logs
+*.log
+deploy-slvr/

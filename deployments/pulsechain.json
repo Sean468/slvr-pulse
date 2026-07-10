@@ -1,0 +1,20 @@
+{
+  "network": "pulsechain",
+  "chainId": 369,
+  "slvrToken": "0xC0F1bDB494Cd248e1D64236720b8d253540ad7cC",
+  "gridGame": "0x61a21dB5764C695490FE9394999F121499c5Bd07",
+  "treasury": "0xd55e47ee94A2ca96761b0A5aac374d2cD3aDAc90",
+  "params": {
+    "roundDuration": 300,
+    "minStake": "10000000000000000000000",
+    "houseFeeBps": 300,
+    "emissionPerRound": "1000000000000000000000",
+    "taxBps": 300,
+    "jackpotOdds": 50,
+    "drandGenesis": 1727521075,
+    "drandPeriod": 3
+  },
+  "evmnetChainHash": "04f1e9062b8a81f848fded9c12306733282b2727ecced50032187751166ec8c3",
+  "deployedAt": "2026-07-10T04:43:27.044Z",
+  "gameStart": 1783658545
+}
