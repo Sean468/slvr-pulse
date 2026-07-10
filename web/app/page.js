@@ -48,9 +48,19 @@ export default function Page() {
         : Array(SQUARES).fill(0n);
       const pot = squares.reduce((a, b) => a + b, 0n);
 
-      // recent settled rounds
+      // Only show rounds that actually had bids. Empty rounds never need
+      // settling (nothing to pay out), so we don't clutter the UI with them.
+      const LOOKBACK = 40, MAX_SHOWN = 8;
+      const start = Math.max(0, roundId - LOOKBACK);
+      const potChecks = [];
+      for (let r = start; r < roundId; r++) potChecks.push(gameRead.roundPot(r).then((p) => ({ r, pot: p })));
+      const active = (await Promise.all(potChecks))
+        .filter((x) => x.pot > 0n)
+        .sort((a, b) => b.r - a.r)
+        .slice(0, MAX_SHOWN);
+
       const results = [];
-      for (let r = roundId - 1; r >= Math.max(0, roundId - 6); r--) {
+      for (const { r } of active) {
         const res = await gameRead.result(r);
         let claimable = null;
         if (res.settled && acct) {
@@ -58,7 +68,7 @@ export default function Page() {
           const alreadyClaimed = await gameRead.claimed(r, acct);
           claimable = { plsOut, slvrOut, alreadyClaimed };
         }
-        // For unsettled closed rounds, work out whether the beacon exists yet
+        // For unsettled rounds with bids, check whether the beacon exists yet
         // so we can offer a "Settle now" button.
         let target = 0, settleReady = false;
         if (!res.settled) {
@@ -221,7 +231,7 @@ export default function Page() {
       <div className="panel">
         <div className="stat" style={{ marginBottom: 10 }}>Recent rounds</div>
         <div className="results">
-          {state && state.results.length === 0 && <div className="note">No settled rounds yet.</div>}
+          {state && state.results.length === 0 && <div className="note">No rounds with bids yet — be the first to stake a square above.</div>}
           {state && state.results.map((res) => (
             <div className="res" key={res.r}>
               <span>#{res.r}</span>
