@@ -31,6 +31,7 @@ export const GAME_ABI = [
   "function houseFeeBps() view returns (uint16)",
   "function slvrJackpotPool() view returns (uint256)",
   "function jackpotOdds() view returns (uint256)",
+  "function rolloverPls() view returns (uint256)",
   "function roundPot(uint256) view returns (uint256)",
   "function squareStake(uint256,uint8) view returns (uint256)",
   "function userStake(uint256,address,uint8) view returns (uint256)",

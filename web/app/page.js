@@ -31,10 +31,10 @@ export default function Page() {
 
   const refresh = useCallback(async () => {
     try {
-      const [gameStart, roundDuration, minStake, houseFeeBps, rid, jackpotPool, jackpotOdds] = await Promise.all([
+      const [gameStart, roundDuration, minStake, houseFeeBps, rid, jackpotPool, jackpotOdds, rollover] = await Promise.all([
         gameRead.gameStart(), gameRead.roundDuration(), gameRead.minStake(),
         gameRead.houseFeeBps(), gameRead.currentRoundId(),
-        gameRead.slvrJackpotPool(), gameRead.jackpotOdds(),
+        gameRead.slvrJackpotPool(), gameRead.jackpotOdds(), gameRead.rolloverPls(),
       ]);
       const roundId = Number(rid);
       const closeTime = Number(await gameRead.roundCloseTime(roundId));
@@ -95,7 +95,7 @@ export default function Page() {
         roundId, closeTime, minStake, houseFeeBps: Number(houseFeeBps),
         squares, mine, pot, results,
         roundDuration: Number(roundDuration), gameStart: Number(gameStart),
-        slvrBalance, jackpotPool, jackpotOdds: Number(jackpotOdds),
+        slvrBalance, jackpotPool, jackpotOdds: Number(jackpotOdds), rollover,
       });
       if (!amount) setAmount(ethers.formatEther(minStake));
     } catch (e) {
@@ -195,6 +195,12 @@ export default function Page() {
       {!chainOk && <div className="panel err">Wrong network — switch your wallet to PulseChain (chain 369).</div>}
       {err && <div className="panel err">{err}</div>}
 
+      {state && state.rollover > 0n && (
+        <div className="panel jackpot">
+          💰 <b>{fmt(state.rollover)} PLS rolled over</b> from earlier rounds that had no winner.
+          It's added to the prize of the next round that has a winner — win a round and it's yours on top of the pot.
+        </div>
+      )}
       {state && state.jackpotPool > 0n && (
         <div className="panel jackpot">
           🎰 <b>Jackpot: {fmt(state.jackpotPool, 2)} SLVR</b> — roughly 1-in-{state.jackpotOdds} winning rounds
@@ -205,7 +211,15 @@ export default function Page() {
       <div className="panel">
         <div className="row">
           <div><div className="stat">Round</div><div className="big">#{state ? state.roundId : "—"}</div></div>
-          <div><div className="stat">Round Pot</div><div className="big">{state ? fmt(state.pot) : "—"} PLS</div></div>
+          <div>
+            <div className="stat">Prize Pool</div>
+            <div className="big">{state ? fmt(state.pot + state.rollover) : "—"} PLS</div>
+            {state && state.rollover > 0n && (
+              <div style={{ fontSize: 11, color: "var(--win)" }}>
+                {fmt(state.pot)} this round + {fmt(state.rollover)} rollover
+              </div>
+            )}
+          </div>
           <div><div className="stat">{secsLeft > 0 ? "Closes in" : "Closed — settling"}</div>
             <div className="big countdown">{secsLeft > 0 ? `${mm}:${ss}` : "•••"}</div></div>
           <div><div className="stat">House Fee</div><div className="big">{state ? (state.houseFeeBps / 100).toFixed(1) : "—"}%</div></div>
