@@ -77,7 +77,18 @@ export default function Page() {
           const emit = Number(await gameRead.drandEmitTime(target));
           settleReady = Math.floor(Date.now() / 1000) >= emit;
         }
-        results.push({ r, ...res, claimable, target, settleReady });
+        // NB: ethers v6 Result objects don't spread their named fields, so pull
+        // them out explicitly instead of `...res`.
+        results.push({
+          r,
+          settled: res.settled,
+          winningSquare: Number(res.winningSquare),
+          drandRound: Number(res.drandRound),
+          grossPot: res.grossPot,
+          payoutPool: res.payoutPool,
+          winningStake: res.winningStake,
+          claimable, target, settleReady,
+        });
       }
 
       setState({
