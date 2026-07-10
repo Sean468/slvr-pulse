@@ -23,6 +23,8 @@ export const PULSECHAIN_PARAMS = {
 export const GAME_ABI = [
   "function currentRoundId() view returns (uint256)",
   "function roundCloseTime(uint256) view returns (uint64)",
+  "function targetDrandRound(uint64) view returns (uint64)",
+  "function drandEmitTime(uint64) view returns (uint64)",
   "function gameStart() view returns (uint64)",
   "function roundDuration() view returns (uint64)",
   "function minStake() view returns (uint256)",
