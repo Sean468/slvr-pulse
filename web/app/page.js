@@ -58,7 +58,16 @@ export default function Page() {
           const alreadyClaimed = await gameRead.claimed(r, acct);
           claimable = { plsOut, slvrOut, alreadyClaimed };
         }
-        results.push({ r, ...res, claimable });
+        // For unsettled closed rounds, work out whether the beacon exists yet
+        // so we can offer a "Settle now" button.
+        let target = 0, settleReady = false;
+        if (!res.settled) {
+          const rClose = Number(await gameRead.roundCloseTime(r));
+          target = Number(await gameRead.targetDrandRound(rClose));
+          const emit = Number(await gameRead.drandEmitTime(target));
+          settleReady = Math.floor(Date.now() / 1000) >= emit;
+        }
+        results.push({ r, ...res, claimable, target, settleReady });
       }
 
       setState({
@@ -118,6 +127,24 @@ export default function Page() {
     try {
       const g = await withSigner();
       const tx = await g.claim(r);
+      await tx.wait();
+      await refresh();
+    } catch (e) { setErr(e.shortMessage || e.message); }
+    setBusy(false);
+  }
+
+  // Anyone can settle a closed round: fetch its target drand beacon and submit
+  // it. The contract verifies the signature on-chain — no trust in the caller.
+  async function settleRound(r, target) {
+    setErr(""); setBusy(true);
+    try {
+      const g = await withSigner();
+      const resp = await fetch(`${DRAND_API}/${EVMNET_CHAIN_HASH}/public/${target}`);
+      if (!resp.ok) throw new Error("Beacon not published yet — try again in a few seconds.");
+      const { signature } = await resp.json();
+      const x = BigInt("0x" + signature.slice(0, 64));
+      const y = BigInt("0x" + signature.slice(64, 128));
+      const tx = await g.settle(r, [x, y]);
       await tx.wait();
       await refresh();
     } catch (e) { setErr(e.shortMessage || e.message); }
@@ -213,6 +240,15 @@ export default function Page() {
                       Claim {fmt(res.claimable.plsOut)} PLS
                     </button>
                   ) : null}
+                </>
+              ) : res.settleReady ? (
+                <>
+                  <span className="pill">closed</span>
+                  <button className="btn primary" disabled={busy || !account}
+                    title={account ? "Fetch the drand beacon and settle this round" : "Connect a wallet to settle"}
+                    onClick={() => settleRound(res.r, res.target)}>
+                    {busy ? "Settling…" : "Settle now"}
+                  </button>
                 </>
               ) : <span className="pill">awaiting beacon</span>}
             </div>
