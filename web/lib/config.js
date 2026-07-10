@@ -38,6 +38,7 @@ export const GAME_ABI = [
   "function pendingClaim(uint256,address) view returns (uint256 plsOut, uint256 slvrOut, uint256 jackpotOut)",
   "function claimed(uint256,address) view returns (bool)",
   "function stake(uint8 square) payable",
+  "function settle(uint256 roundId, uint256[2] signature)",
   "function claim(uint256 roundId)",
 ];
 
