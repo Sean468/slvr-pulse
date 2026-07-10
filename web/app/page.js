@@ -3,12 +3,18 @@ import "./globals.css";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import {
-  CHAIN_ID, CHAIN_ID_HEX, READ_RPC, EXPLORER, GRID_GAME, SQUARES,
-  GAME_ABI, PULSECHAIN_PARAMS,
+  CHAIN_ID, CHAIN_ID_HEX, READ_RPC, EXPLORER, GRID_GAME, SLVR_TOKEN, SQUARES,
+  GAME_ABI, TOKEN_ABI, PULSECHAIN_PARAMS, EVMNET_CHAIN_HASH, DRAND_API,
 } from "../lib/config";
 
 const readProvider = new ethers.JsonRpcProvider(READ_RPC, CHAIN_ID);
 const fmt = (wei, d = 0) => Number(ethers.formatEther(wei || 0n)).toLocaleString(undefined, { maximumFractionDigits: d });
+
+const SITE = "https://slvr-three.vercel.app";
+function shareUrl(res) {
+  const text = `SLVR round #${res.r} on PulseChain: square ${Number(res.winningSquare)} won a ${fmt(res.grossPot)} PLS pot — settled by a verifiable drand beacon. Play:`;
+  return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(SITE)}`;
+}
 
 export default function Page() {
   const [account, setAccount] = useState(null);
@@ -21,16 +27,19 @@ export default function Page() {
   const walletRef = useRef(null);
 
   const gameRead = new ethers.Contract(GRID_GAME, GAME_ABI, readProvider);
+  const tokenRead = new ethers.Contract(SLVR_TOKEN, TOKEN_ABI, readProvider);
 
   const refresh = useCallback(async () => {
     try {
-      const [gameStart, roundDuration, minStake, houseFeeBps, rid] = await Promise.all([
+      const [gameStart, roundDuration, minStake, houseFeeBps, rid, jackpotPool, jackpotOdds] = await Promise.all([
         gameRead.gameStart(), gameRead.roundDuration(), gameRead.minStake(),
         gameRead.houseFeeBps(), gameRead.currentRoundId(),
+        gameRead.slvrJackpotPool(), gameRead.jackpotOdds(),
       ]);
       const roundId = Number(rid);
       const closeTime = Number(await gameRead.roundCloseTime(roundId));
       const acct = account;
+      const slvrBalance = acct ? await tokenRead.balanceOf(acct) : 0n;
       const squares = await Promise.all(
         Array.from({ length: SQUARES }, (_, s) => gameRead.squareStake(roundId, s))
       );
@@ -56,6 +65,7 @@ export default function Page() {
         roundId, closeTime, minStake, houseFeeBps: Number(houseFeeBps),
         squares, mine, pot, results,
         roundDuration: Number(roundDuration), gameStart: Number(gameStart),
+        slvrBalance, jackpotPool, jackpotOdds: Number(jackpotOdds),
       });
       if (!amount) setAmount(ethers.formatEther(minStake));
     } catch (e) {
@@ -123,7 +133,10 @@ export default function Page() {
       <div className="header">
         <div className="brand">◈ SLVR</div>
         {account ? (
-          <span className="pill">{account.slice(0, 6)}…{account.slice(-4)}</span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span className="pill" title="Your SLVR balance">◈ {state ? fmt(state.slvrBalance, 2) : "…"} SLVR</span>
+            <span className="pill">{account.slice(0, 6)}…{account.slice(-4)}</span>
+          </div>
         ) : (
           <button className="btn primary" onClick={connect}>Connect Wallet</button>
         )}
@@ -134,6 +147,13 @@ export default function Page() {
       {!chainOk && <div className="panel err">Wrong network — switch your wallet to PulseChain (chain 369).</div>}
       {err && <div className="panel err">{err}</div>}
 
+      {state && state.jackpotPool > 0n && (
+        <div className="panel jackpot">
+          🎰 <b>Jackpot: {fmt(state.jackpotPool, 2)} SLVR</b> — roughly 1-in-{state.jackpotOdds} winning rounds
+          pays it out on top of the pot. Win a round and it could be yours.
+        </div>
+      )}
+
       <div className="panel">
         <div className="row">
           <div><div className="stat">Round</div><div className="big">#{state ? state.roundId : "—"}</div></div>
@@ -141,6 +161,7 @@ export default function Page() {
           <div><div className="stat">{secsLeft > 0 ? "Closes in" : "Closed — settling"}</div>
             <div className="big countdown">{secsLeft > 0 ? `${mm}:${ss}` : "•••"}</div></div>
           <div><div className="stat">House Fee</div><div className="big">{state ? (state.houseFeeBps / 100).toFixed(1) : "—"}%</div></div>
+          <div><div className="stat">Jackpot</div><div className="big">{state ? fmt(state.jackpotPool, 1) : "—"} <span style={{ fontSize: 13, color: "var(--muted)" }}>SLVR</span></div></div>
         </div>
       </div>
 
@@ -181,12 +202,17 @@ export default function Page() {
                 <>
                   <span className="pill">winning square {Number(res.winningSquare)}</span>
                   <span className="note">pot {fmt(res.grossPot)} PLS</span>
+                  <span className="reslinks">
+                    <a className="lnk" href={`${EXPLORER}/address/${GRID_GAME}`} target="_blank" rel="noreferrer" title="View contract on explorer">explorer ↗</a>
+                    <a className="lnk" href={`${DRAND_API}/${EVMNET_CHAIN_HASH}/public/${Number(res.drandRound)}`} target="_blank" rel="noreferrer" title="Verify the drand beacon that decided this round">verify ↗</a>
+                    <a className="lnk" href={shareUrl(res)} target="_blank" rel="noreferrer" title="Share this round">share ↗</a>
+                  </span>
                   {res.claimable && res.claimable.plsOut > 0n ? (
                     res.claimable.alreadyClaimed ? <span className="pill">claimed</span> :
                     <button className="btn primary" disabled={busy} onClick={() => claim(res.r)}>
                       Claim {fmt(res.claimable.plsOut)} PLS
                     </button>
-                  ) : <span className="note">—</span>}
+                  ) : null}
                 </>
               ) : <span className="pill">awaiting beacon</span>}
             </div>
